@@ -83,7 +83,7 @@ class DSDTW(nn.Module):
         output = output * mask.unsqueeze(2)
 
         '''RANs'''
-        output = nutils.rnn.pack_padded_sequence(output, list(length.cpu().numpy()), batch_first=True)
+        output = nutils.rnn.pack_padded_sequence(output, length.cpu().to(torch.int64).tolist(), batch_first=True)
         output, hidden = self.rnn(output, self.h0)
         output, length = nutils.rnn.pad_packed_sequence(output, batch_first=True) 
         length = Variable(length).cuda()
