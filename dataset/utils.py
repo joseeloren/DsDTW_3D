@@ -34,6 +34,9 @@ class butterLPFilter(object):
         return y
 
 bf = butterLPFilter(15, 100)
+'''
+ORIGINAL
+Jose: Es la función de extracción de características en 2D, hay que hacerla en 3D
 def featExt(pathList, feats, gpnoise=None, dim=2, transform=False, finger_scene=False):
     for path in pathList:
         p = path[:,dim]
@@ -56,12 +59,84 @@ def featExt(pathList, feats, gpnoise=None, dim=2, transform=False, finger_scene=
                                   logCurRadius[:,None], totalAccel[:,None], dv[:,None], dv2[:,None], dtheta[:,None], p[:,None]), axis=1).astype(numpy.float32) #A minimum and well-performed feature set. 
         
         if finger_scene:
-            ''' For finger scenario '''
+            #For finger scenario
             feat[:,:-1] = (feat[:,:-1] - numpy.mean(feat[:,:-1], axis=0)) / numpy.std(feat[:,:-1], axis=0)
         else:
-            ''' For stylus scenario '''
+            #For stylus scenario
             feat = (feat - numpy.mean(feat, axis=0)) / numpy.std(feat, axis=0)
         
+        feats.append(feat.astype(numpy.float32))
+    return feats
+'''
+'''
+MODIFICADO FEAT00
+Jose: Prueba cualquiera de parámetros para ver que el código funciona
+def featExt(pathList, feats, gpnoise=None, dim=3, transform=False, finger_scene=False):
+    for path in pathList:
+        path[:,0] = bf(path[:,0])
+        path[:,1] = bf(path[:,1])
+        path[:,2] = bf(path[:,2])
+        
+        dx = diff(path[:, 0]); dy = diff(path[:, 1]); dz = diff(path[:, 2])
+        v = numpy.sqrt(dx**2+dy**2+dz**2)
+        theta = numpy.arctan2(dz, numpy.sqrt(dx**2 + dy**2))
+        cos = numpy.cos(theta)
+        sin = numpy.sin(theta)
+        dv = diff(v)
+        dtheta = numpy.abs(diffTheta(theta))
+        logCurRadius = numpy.log((v+0.05) / (dtheta+0.05))
+        dv2 = numpy.abs(v*dtheta)
+        totalAccel = numpy.sqrt(dv**2 + dv2**2)
+
+        feat = numpy.concatenate((dx[:,None], dy[:,None], dz[:,None], v[:,None], cos[:,None], sin[:,None], theta[:,None], 
+                                  logCurRadius[:,None], totalAccel[:,None], dv[:,None], dv2[:,None], dtheta[:,None]), axis=1).astype(numpy.float32) #A minimum and well-performed feature set. 
+        
+        if finger_scene:
+            #For finger scenario
+            #Jose: No tiene sentido en 3D porque lo que hace es quitar la presión, pero lo conservamos
+            feat[:,:-1] = (feat[:,:-1] - numpy.mean(feat[:,:-1], axis=0)) / numpy.std(feat[:,:-1], axis=0)
+        else:
+            #For stylus scenario
+            feat = (feat - numpy.mean(feat, axis=0)) / numpy.std(feat, axis=0)
+        
+        feats.append(feat.astype(numpy.float32))
+    return feats
+FIN MODIFICADO
+'''
+'''
+MODIFICADO FEAT01
+Jose: x, y, z, dx, dy, dz, d2x, d2y, d2z
+'''
+def featExt(pathList, feats, gpnoise=None, dim=3, transform=False, finger_scene=False):
+    for path in pathList:
+        # Aplicar filtro pasa bajos a cada coordenada
+        path[:,0] = bf(path[:,0])
+        path[:,1] = bf(path[:,1])
+        path[:,2] = bf(path[:,2])
+        
+        # Derivadas de primer orden
+        dx = diff(path[:, 0])
+        dy = diff(path[:, 1])
+        dz = diff(path[:, 2])
+        
+        # Derivadas de segundo orden
+        d2x = diff(dx)
+        d2y = diff(dy)
+        d2z = diff(dz)
+
+        # Concatenar características: x,y,z,dx,dy,dz,d2x,d2y,d2z
+        feat = numpy.concatenate((
+            path[:,0:3],
+            dx[:,None], dy[:,None], dz[:,None],
+            d2x[:,None], d2y[:,None], d2z[:,None]
+        ), axis=1).astype(numpy.float32)
+
+        # Normalización (misma lógica que antes)
+        if finger_scene:
+            feat[:,:-1] = (feat[:,:-1] - numpy.mean(feat[:,:-1], axis=0)) / numpy.std(feat[:,:-1], axis=0)
+        else:
+            feat = (feat - numpy.mean(feat, axis=0)) / numpy.std(feat, axis=0)
+
         feats.append(feat.astype(numpy.float32))
     return feats
 

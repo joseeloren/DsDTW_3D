@@ -44,8 +44,19 @@ torch.cuda.manual_seed(args.seed)
 cudnn.enabled = True
 cudnn.benchmark = False
 cudnn.deterministic = True
-
+'''
+ORIGINAL
+Jose: Comento esta línea porque la base de datos no aplica
 sigDict = pickle.load(open("../Data/MCYT_dev.pkl", "rb"), encoding='iso-8859-1')
+'''
+'''
+MODIFICADO
+Jose: Meto la base de datos de DeepAirSig renombrada 2025
+'''
+sigDict = pickle.load(open("../Data3D/DeepAirSig_dev.pkl", "rb"), encoding='iso-8859-1')
+'''
+FIN MODIFICADO
+'''
 dset = dataset.dataset(
                     sigDict=sigDict,
                     taskSize=n_task, 
@@ -54,12 +65,18 @@ dset = dataset.dataset(
                     finger_scene=False
                 )
 del sigDict
+'''
+ORIGINAL
+Jose: Comento estas líneas porque estas bases de datos no aplican. NO HAY MODIFICACION
+
 sigDict = pickle.load(open("../Data/BSID_dev.pkl", "rb"), encoding='iso-8859-1')
 dset.addDatabase(sigDict, finger_scene=False)
 del sigDict
 sigDict = pickle.load(open("../Data/EBio1_dev.pkl", "rb"), encoding='iso-8859-1')
 dset.addDatabase(sigDict, finger_scene=False)
 del sigDict
+'''
+
 # sigDict = pickle.load(open("../Unsupervised_sigVer/Data/EBio2_dev.pkl", "rb"), encoding='iso-8859-1')
 # dset.addDatabase(sigDict, finger_scene=False)
 # del sigDict
@@ -116,13 +133,17 @@ for epoch in range(0, args.epochs):
         TriLoss_hard += triLoss_hard.item()
         Var += var.item()
 
+        '''
+        ORIGINAL
+        Jose: No llega a idx=50, son menos firmas por usuario
         if (idx + 1) % 50 == 0:
-            print ("epoch:",epoch, "idx:",idx)
-            print("TriLoss_std:", format(TriLoss_std/50,'.6f'), "TriLoss_hard:", \
-                format(TriLoss_hard/50,'.6f'), "Var:", format(Var/50,'.6f'))
-            TriLoss_std = 0
-            TriLoss_hard = 0
-            Var = 0
+        '''
+        print ("epoch:",epoch, "idx:",idx)
+        print("TriLoss_std:", format(TriLoss_std/50,'.6f'), "TriLoss_hard:", \
+            format(TriLoss_hard/50,'.6f'), "Var:", format(Var/50,'.6f'))
+        TriLoss_std = 0
+        TriLoss_hard = 0
+        Var = 0
 
     lr_scheduler.step()
     

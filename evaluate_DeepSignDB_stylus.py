@@ -41,9 +41,27 @@ numpy.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
+'''
+ORIGINAL
+Jose: MCYT no aplica en 3D
 sigDict = pickle.load(open("../Data/MCYT_eva.pkl", "rb"), encoding='iso-8859-1')
+'''
+sigDict = pickle.load(open("../Data3D/DeepAirSig_eva.pkl", "rb"), encoding='iso-8859-1')
+'''
+ORIGINAL
+Jose: Los genuine y forgery son distintos a los de MCYT
 num_g = 25; num_f = 25
 print("For MCYT:")
+'''
+'''
+MODIFICADO
+Jose: Genuine y forgery de DeepAirSign
+'''
+num_g = 20; num_f = 25
+print("For DeepAirSig:")
+'''
+FIN MODIFICADO
+'''
 
 dset = dataset.dataset(sigDict=sigDict, finger_scene=False)
 sampler = dataset.batchSampler(dset)
@@ -78,19 +96,50 @@ for idx, batch in enumerate(dataLoader):
     output = output.data.cpu().numpy()
     feats.append(output)
 
+
 if not os.path.exists("log/seed%d"%args.seed):
     os.makedirs("log/seed%d"%args.seed)
-
+'''
+ORIGINAL
+Jose: No es MCYT
 if not os.path.exists("log/seed%d/mcyt"%args.seed):
     os.makedirs("log/seed%d/mcyt"%args.seed)
-
+'''
+'''
+MODIFICADO
+Jose: Cambiado para DeepAirSign
+'''
+if not os.path.exists("log/seed%d/deepairsign"%args.seed):
+    os.makedirs("log/seed%d/deepairsign"%args.seed)
+'''
+FIN MODIFICADO
+'''
 if args.rf:
     DIST_P, DIST_N, DIST_TEMP = dist_seq_rf(feats, n_shot_g, 0, num_g, num_f)
 else:
     DIST_P, DIST_N, DIST_TEMP = dist_seq(feats, n_shot_g, 0, num_g, num_f)
+'''
+ORIGINAL
+Jose: No es MCYT
 numpy.save("log/seed%d/mcyt/dtw_dist_p%s.npy"%(args.seed, args.epoch), DIST_P)
 numpy.save("log/seed%d/mcyt/dtw_dist_n%s.npy"%(args.seed, args.epoch), DIST_N)
 numpy.save("log/seed%d/mcyt/dtw_dist_temp%s.npy"%(args.seed, args.epoch), DIST_TEMP)
+'''
+'''
+MODIFICADO
+Jose: Cambiado para DeepAirSign
+'''
+numpy.save("log/seed%d/deepairsign/dtw_dist_p%s.npy"%(args.seed, args.epoch), DIST_P)
+numpy.save("log/seed%d/deepairsign/dtw_dist_n%s.npy"%(args.seed, args.epoch), DIST_N)
+numpy.save("log/seed%d/deepairsign/dtw_dist_temp%s.npy"%(args.seed, args.epoch), DIST_TEMP)
+'''
+FIN MODIFICADO
+'''
+
+'''
+ORIGINAL
+
+Jose: No tiene sentido meter más de una base de datos y son de 2D
 
 sigDict = pickle.load(open("../Data/BSID_eva.pkl", "rb"), encoding='iso-8859-1')
 num_g = 16; num_f = 12
@@ -378,4 +427,4 @@ numpy.save("log/seed%d/ebio1/dtw_dist_p%s_d4.npy"%(args.seed, args.epoch), DIST_
 numpy.save("log/seed%d/ebio1/dtw_dist_n%s_d4.npy"%(args.seed, args.epoch), DIST_N)
 numpy.save("log/seed%d/ebio1/dtw_dist_temp%s_d4.npy"%(args.seed, args.epoch), DIST_TEMP)
 
-
+'''

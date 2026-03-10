@@ -43,6 +43,10 @@ def selectTemplate(distMatrix):
     
     return idx, dtmp**0.5, dmax**0.5, dmin**0.5, dmean**0.5
 
+'''
+ORIGINAL
+Jose: Cambiamos porque falla cuando RF=True
+
 def getEER(FAR, FRR):
     a = FRR <= FAR
     s = numpy.sum(a)
@@ -53,6 +57,86 @@ def getEER(FAR, FRR):
     a = [[FRR[1]-FRR[0], FAR[0]-FAR[1]], [-1, 1]]
     b = [(FRR[1]-FRR[0])*FAR[0]-(FAR[1]-FAR[0])*FRR[0], 0]
     return numpy.linalg.solve(a, b)
+    
+'''
+
+import numpy
+import matplotlib.pyplot as plt
+
+def getEER(FAR, FRR, verbose=True, show_plot=True):
+    """
+    Calcula el Equal Error Rate (EER) a partir de los arrays FAR y FRR.
+    
+    Parámetros:
+        FAR (numpy.ndarray): False Acceptance Rate en función del umbral.
+        FRR (numpy.ndarray): False Rejection Rate en función del umbral.
+        verbose (bool): Si True, imprime mensajes en caso de error o advertencia.
+        show_plot (bool): Si True, muestra el gráfico de FAR y FRR.
+    
+    Devuelve:
+        list: [eer], donde eer es el valor estimado del Equal Error Rate.
+    """
+    # Validación inicial
+    if len(FAR) != len(FRR) or len(FAR) == 0:
+        if verbose:
+            print("❌ Error: FAR y FRR deben tener la misma longitud y no estar vacíos.")
+            print(f"  FAR: {FAR}")
+            print(f"  FRR: {FRR}")
+        return [numpy.nan]
+    
+    # Mostrar gráfico si se solicita
+    if show_plot:
+        plt.figure(figsize=(6,4))
+        plt.plot(FAR, label='FAR', color='red')
+        plt.plot(FRR, label='FRR', color='blue')
+        plt.title('Distribución de FAR y FRR')
+        plt.xlabel('Índice / Umbral')
+        plt.ylabel('Tasa de error')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+    a = FRR <= FAR
+    s = numpy.sum(a)
+
+    # Caso anómalo: no hay cruce entre FAR y FRR
+    if s == 0 or s == len(FRR):
+        if verbose:
+            print("⚠️ Advertencia: No hay cruce entre FAR y FRR.")
+            if s == 0:
+                print("  → FRR es siempre mayor que FAR.")
+            else:
+                print("  → FAR es siempre mayor que FRR.")
+            print(f"  FAR: {FAR}")
+            print(f"  FRR: {FRR}")
+        idx = numpy.argmin(numpy.abs(FRR - FAR))
+        eer = (FAR[idx] + FRR[idx]) / 2.0
+        if verbose:
+            print(f"  ✅ EER aproximado en índice {idx}: {eer:.4f}")
+        return [eer]
+
+    # Caso normal: interpolación lineal entre los puntos de cruce
+    a[-s-1] = 1
+    a[-s+1:] = 0
+    FRR = FRR[a]
+    FAR = FAR[a]
+
+    try:
+        A = [[FRR[1] - FRR[0], FAR[0] - FAR[1]], [-1, 1]]
+        b = [(FRR[1] - FRR[0]) * FAR[0] - (FAR[1] - FAR[0]) * FRR[0], 0]
+        eer = numpy.linalg.solve(A, b)[0]
+        if verbose:
+            print(f"✅ EER calculado correctamente: {eer:.4f}")
+        return [eer]
+    except Exception as e:
+        if verbose:
+            print("❌ Error al calcular el EER mediante interpolación lineal.")
+            print(f"  Motivo: {e}")
+            print(f"  FAR: {FAR}")
+            print(f"  FRR: {FRR}")
+        return [numpy.nan]
+
 
 def scoreScatter(gen, forg):
     ax = plt.subplot()
@@ -83,10 +167,23 @@ else:
 print("LOOP:", LOOP)
 
 EER_all = []
-
+'''
+ORIGINAL
+Jose: es de MCYT
 n_users = 100
 n_test_g = 25 - 4
 n_test_f = 25
+'''
+'''
+MODIFICADO
+Jose: Parámetros para DeepAirSign
+'''
+n_users = 8
+n_test_g = 20 - 4
+n_test_f = 25
+'''
+FIN MODIFICADO
+'''
 N_TEST_G = n_users * n_test_g
 N_TEST_F = n_users * n_test_f
 
@@ -97,6 +194,101 @@ TOTAL_N = 0
 
 EER_G = []; EER_L = []
 mEER_L = []
+'''
+MODIFICADO
+Jose: Ponemos la base de datos de DeepAirSign
+'''
+print("For DeepAirSign:")
+for seed in [111,222,333,444,555]:
+    DIST_P = numpy.load("log/seed%d/deepairsign/dtw_dist_p%s.npy"%(seed, epoch))
+    DIST_N = numpy.load("log/seed%d/deepairsign/dtw_dist_n%s.npy"%(seed, epoch))
+    DIST_TEMP = numpy.load("log/seed%d/deepairsign/dtw_dist_temp%s.npy"%(seed, epoch))
+    if LOOP:
+        for i in range(4):
+            datum_p = []
+            datum_n = []
+            EERs = []
+            for ii in range(n_users):   
+                dmax_p = numpy.max(DIST_P[ii*n_test_g:(ii+1)*n_test_g,i:i+1], axis=1) 
+                dmin_p = numpy.min(DIST_P[ii*n_test_g:(ii+1)*n_test_g,i:i+1], axis=1) 
+                dmean_p = numpy.mean(DIST_P[ii*n_test_g:(ii+1)*n_test_g,i:i+1], axis=1) 
+
+                dmax_n = numpy.max(DIST_N[ii*n_test_f:(ii+1)*n_test_f,i:i+1], axis=1) 
+                dmin_n = numpy.min(DIST_N[ii*n_test_f:(ii+1)*n_test_f,i:i+1], axis=1) 
+                dmean_n = numpy.mean(DIST_N[ii*n_test_f:(ii+1)*n_test_f,i:i+1], axis=1) 
+
+                datum_p.append(numpy.concatenate((dmax_p[:,None], dmin_p[:,None], dmean_p[:,None]), axis=1) / 10.) 
+                datum_n.append(numpy.concatenate((dmax_n[:,None], dmin_n[:,None], dmean_n[:,None]), axis=1) / 10.) 
+
+            datum_p = numpy.concatenate(datum_p, axis=0)
+            datum_n = numpy.concatenate(datum_n, axis=0)
+
+            # scoreScatter(datum_p, datum_n)
+            for ii in range(n_users):    
+                k = 1 #Simply set to 1.
+                c = numpy.arange(0, 50, 0.002)[None,:]
+                FRR = 1. - numpy.sum(numpy.sum(datum_p[ii*n_test_g:(ii+1)*n_test_g,1:] * [1, 1/k], axis=1)[:,None] - c <= 0, axis=0) / float(n_test_g)
+                FAR = 1. - numpy.sum(numpy.sum(datum_n[ii*n_test_f:(ii+1)*n_test_f,1:] * [1, 1/k], axis=1)[:,None] - c >= 0, axis=0) / float(n_test_f)
+                EERs.append(getEER(FAR, FRR)[0] * 100)
+            EER_L.append(numpy.mean(EERs))
+
+            k = 1 #Simply set to 1.
+            c = numpy.arange(0, 50, 0.002)[None,:]
+            FRR = 1. - numpy.sum(numpy.sum(datum_p[:, 1:] * [1, 1/k], axis=1)[:,None] - c <= 0, axis=0) / float(datum_p.shape[0])
+            FAR = 1. - numpy.sum(numpy.sum(datum_n[:, 1:] * [1, 1/k], axis=1)[:,None] - c >= 0, axis=0) / float(datum_n.shape[0])
+            EER_G.append(getEER(FAR, FRR)[0] * 100)
+
+            ROC_FAR += FAR * 0.2 * 0.25 * datum_n.shape[0]
+            ROC_FRR += FRR * 0.2 * 0.25 * datum_p.shape[0]
+    else:
+        datum_p = []
+        datum_n = []
+        EERs = []
+        for ii in range(n_users):   
+            idx, dtmp, dmax, dmin, dmean = selectTemplate(DIST_TEMP[ii*n_train_g:(ii+1)*n_train_g,0:n_train_g])
+            
+            dmax_p = numpy.max(DIST_P[ii*n_test_g:(ii+1)*n_test_g,0:n_train_g], axis=1) / dmax 
+            dmin_p = numpy.min(DIST_P[ii*n_test_g:(ii+1)*n_test_g,0:n_train_g], axis=1) / dmin 
+            dmean_p = numpy.mean(DIST_P[ii*n_test_g:(ii+1)*n_test_g,0:n_train_g], axis=1) / dmean 
+
+            dmax_n = numpy.max(DIST_N[ii*n_test_f:(ii+1)*n_test_f,0:n_train_g], axis=1) / dmax 
+            dmin_n = numpy.min(DIST_N[ii*n_test_f:(ii+1)*n_test_f,0:n_train_g], axis=1) / dmin 
+            dmean_n = numpy.mean(DIST_N[ii*n_test_f:(ii+1)*n_test_f,0:n_train_g], axis=1) / dmean
+
+            datum_p.append(numpy.concatenate((dmax_p[:,None], dmin_p[:,None], dmean_p[:,None]), axis=1) / 10.) 
+            datum_n.append(numpy.concatenate((dmax_n[:,None], dmin_n[:,None], dmean_n[:,None]), axis=1) / 10.) 
+
+        datum_p = numpy.concatenate(datum_p, axis=0)
+        datum_n = numpy.concatenate(datum_n, axis=0)
+
+        for ii in range(n_users): 
+            k = 1 #Simply set to 1.
+            c = numpy.arange(0, 50, 0.002)[None,:]
+            FRR = 1. - numpy.sum(numpy.sum(datum_p[ii*n_test_g:(ii+1)*n_test_g,1:] * [1, 1/k], axis=1)[:,None] - c <= 0, axis=0) / float(n_test_g)
+            FAR = 1. - numpy.sum(numpy.sum(datum_n[ii*n_test_f:(ii+1)*n_test_f,1:] * [1, 1/k], axis=1)[:,None] - c >= 0, axis=0) / float(n_test_f)
+            EERs.append(getEER(FAR, FRR)[0] * 100)
+        EER_L.append(numpy.mean(EERs))
+
+        k = 1. #Simply set to 1.
+        c = numpy.arange(0, 50, 0.002)[None,:]
+        FRR = 1. - numpy.sum(numpy.sum(datum_p[:, 1:] * [1, 1/k], axis=1)[:,None] - c <= 0, axis=0) / float(datum_p.shape[0])
+        FAR = 1. - numpy.sum(numpy.sum(datum_n[:, 1:] * [1, 1/k], axis=1)[:,None] - c >= 0, axis=0) / float(datum_n.shape[0])
+        EER_G.append(getEER(FAR, FRR)[0] * 100)
+
+        ROC_FAR += FAR * 0.2 * datum_n.shape[0]
+        ROC_FRR += FRR * 0.2 * datum_p.shape[0]
+
+print ("Global threshold:", numpy.mean(EER_G), "Local threshold:", numpy.mean(EER_L))
+mEER_L.append(numpy.mean(EER_L))
+TOTAL_P += datum_p.shape[0] 
+TOTAL_N += datum_n.shape[0] 
+'''
+FIN MODIFICADO
+'''
+'''
+ORIGINAL
+Jose: Son las otras BBDD
+
 print("For MCYT:")
 for seed in [111,222,333,444,555]:
     DIST_P = numpy.load("log/seed%d/mcyt/dtw_dist_p%s.npy"%(seed, epoch))
@@ -885,7 +1077,7 @@ print ("Global threshold:", numpy.mean(EER_G), "Local threshold:", numpy.mean(EE
 mEER_L.append(numpy.mean(EER_L))
 TOTAL_P += datum_p.shape[0]
 TOTAL_N += datum_n.shape[0]
-
+'''
 final_global = getEER(ROC_FAR*1.0/TOTAL_N, ROC_FRR*1.0/TOTAL_P)[0] * 100
 print("Overall EER under global threshold:", final_global)
 # plt.plot(ROC_FAR*1.0/TOTAL_N, ROC_FRR*1.0/TOTAL_P)
